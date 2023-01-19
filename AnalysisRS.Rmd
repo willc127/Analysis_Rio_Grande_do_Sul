@@ -1,0 +1,157 @@
+---
+title: "Avaliação econôminca dos municípios de Rio Grande do Sul"
+author: "William Cesar"
+date: "2022-11-17"
+output: html_document
+---
+
+## Leitura dos dados
+
+```{r Leitura dos dados}
+dados = read.csv("dados.csv", sep = ";", na.strings="", stringsAsFactors=T)
+dados
+```
+
+## Limpeza dos dados
+
+```{r Verificação de duplicados}
+#buscar duplicados pelo ID
+dados[duplicated(dados$CODIGO),]
+dados[duplicated(dados$MUNICIPIO),]
+dados = dados[-c(22,23,58,59,95,96,142,143,182,183),]
+dados
+```
+
+```{r Valores faltantes}
+#valores faltantes NAs
+dados[!complete.cases(dados),]
+```
+
+```{r Outliers}
+#Outlier no PIB
+#outPIB = boxplot.stats(dados$PIB)$out
+#outPIB = which(dados$PIB %in% c(outPIB))
+#outVALOR = boxplot.stats(dados$VALOREMPENHO)$out
+#outVALOR = which(dados$VALOREMPENHO %in% c(outVALOR))
+#outliers = c(outVALOR,outPIB)
+#dados = dados[-c(outliers),]
+#dados
+```
+
+```{r Dados limpos}
+summary(dados)
+```
+
+## Análise do PIB
+
+```{r Análise PIB}
+summary(dados$PIB)
+split.screen(figs=c(2,1)) #Definir o layout
+screen(1)
+boxplot(dados$PIB, main= "PIB dos municípios de RS", xlab = "PIB (R$)", col="#0c4c8a", horizontal = TRUE)
+screen(2)
+hist(dados$PIB, main= "PIB dos municípios de RS", xlab = "PIB (R$)", ylab = "Frequência", col="#0c4c8a")
+```
+
+## Análise do valor de empenho
+
+```{r Análise Valor Empenho}
+summary(dados$VALOREMPENHO)
+split.screen(figs=c(2,1)) #Definir o layout
+screen(1)
+boxplot(dados$VALOREMPENHO, main= "Valor de empenho dos municípios de RS", xlab = "Valor Empenho (R$)", col="#0c4c8a", horizontal = TRUE, outline = F)
+screen(2)
+hist(dados$VALOREMPENHO, main= "Valor de empenho dos municípios de RS", xlab = "Valor Empenho (R$)", ylab = "Frequência", col="#0c4c8a")
+```
+
+### Correlação
+
+```{r Correlação PIB vs. VALOREMPENHO}
+regressao = lm(dados$PIB~dados$VALOREMPENHO, data=dados)
+coeff     = coefficients(regressao)
+eq        = paste0("y = ", round(coeff[2],4), "*x + ", round(coeff[1],1))
+plot(dados$VALOREMPENHO, dados$PIB, xlab = "Valor Empenho (R$)", ylab = "PIB (R$)", main = eq, pch = 20)
+abline(regressao, col = "red")
+
+r = cor(dados$PIB, dados$VALOREMPENHO)
+
+if (r>0){
+  correl = "Correlação linear positiva"
+} else {
+  correl = "Correlação linear negativa"
+}
+
+if (abs(r)>=0.90){
+  inten = "muito forte"
+} else if (abs(r)>0.7) {
+  inten = "forte"
+} else if (abs(r)>0.5) {
+  inten = "moderada"
+} else if (abs(r)>0.3) {
+  inten = "fraca"
+} else if (abs(r)<=0.3) {
+  inten = "desprezível"
+}
+
+paste("r = ",round(r,3))
+paste(correl,inten)
+```
+
+```{r PIB}
+library("RColorBrewer")
+barplot(dados$PIB,col= gray.colors(190), xlab="Município", ylab="PIB (R$)", names.arg=dados$MUNICIPIO)
+#rearranjar em ordem decrescente
+df = dados[order(dados$PIB, decreasing = TRUE),]
+par(mar=c(3,14,2,1))
+barplot(df$PIB, main = "PIB dos municípios de RS", names.arg=df$MUNICIPIO, horiz = TRUE, las = 1, col= heat.colors(190))
+box()
+```
+
+```{r PIB 10+}
+#10 maiores
+MPIB = head(dados[order(-dados$PIB),],10)
+print(MPIB)
+par(mar=c(1,5,2,1))
+barplot(MPIB$PIB,col= brewer.pal(n = 10, name = "RdBu"), main = "10 Maiores PIBs de RS", ylab = "R$", las = 1)
+legend("topright",legend=MPIB$MUNICIPIO,col = brewer.pal(n = 10, name = "RdBu"), lty=1:2, cex=0.8, ncol = 2,lwd=4)
+box()
+```
+
+```{r Valor Empenho}
+barplot(dados$VALOREMPENHO,col= gray.colors(190), xlab="Município", ylab="PIB (R$)", names.arg=dados$MUNICIPIO)
+#rearranjar em ordem decrescente
+df = dados[order(dados$VALOREMPENHO, decreasing = TRUE),]
+par(mar=c(2.5,14,2,1))
+barplot(df$VALOREMPENHO, main = "Valor de empenho dos municípios de RS", names.arg=df$MUNICIPIO, horiz = TRUE, las = 1, col= heat.colors(190))
+box()
+```
+
+```{r Valor Empenho 10+}
+#10 maiores
+MEMPENHO = head(dados[order(-dados$VALOREMPENHO),],10)
+print(MEMPENHO)
+par(mar=c(1,5,2,1))
+barplot(MEMPENHO$VALOREMPENHO,col= brewer.pal(n = 10, name = "RdBu"), main = "10 Maiores empenhos de RS", ylab = "R$", las = 1)
+legend("topright",legend=MEMPENHO$MUNICIPIO,col = brewer.pal(n = 10, name = "RdBu"), lty=1:2, cex=0.8, ncol = 2,lwd=4)
+box()
+```
+
+### Proporção
+
+```{r Proporção Empenho/PIB}
+dados$proporcao = dados$VALOREMPENHO/dados$PIB
+df = dados[order(dados$proporcao, decreasing = TRUE),]
+par(mar=c(2.5,14,2,1))
+barplot(df$proporcao, main = "Razões empenho/PIB de RS", names.arg=df$MUNICIPIO, horiz = TRUE, las = 1, col= heat.colors(190))
+box()
+
+```
+
+```{r Proporção 10+}
+MPROPORCAO = head(dados[order(-dados$proporcao),],10)
+print(MPROPORCAO)
+par(mar=c(1,5,2,1))
+barplot(MPROPORCAO$proporcao ,col= brewer.pal(n = 10, name = "RdBu"), main = "10 Maiores razões empenho/PIB de RS", las = 1)
+legend("topright",legend=MPROPORCAO$MUNICIPIO,col = brewer.pal(n = 10, name = "RdBu"), lty=1:2, cex=0.8, ncol = 2,lwd=4)
+box()
+```
